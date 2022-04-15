@@ -6,13 +6,13 @@ from telethon.tl.custom import Button
 from config import *
 from sql import Sql
 
-key = '/start'
+key = 'библиотека'
 
-async def commandStart(event):
+async def commandLib(event):
     chat = event.chat_id
 
     markup = event.client.build_reply_markup(
-        [[Button.text(x)] for x in MENU_BUTTONS.keys()]
+        [[Button.text(x)] for x in MENU_BUTTONS["Библиотека"]]
         )
     
-    await event.respond("Добро пожаловать в точку кипения", buttons=markup)
+    await event.respond("Выберите действие", buttons=markup)

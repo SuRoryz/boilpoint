@@ -1,14 +1,15 @@
 from telethon import TelegramClient, events
-from telethon.tl.custom import Button
-import os
-import importlib
+
+from sql import Sql
+from handleNotCommand import handleNotCommand, handleInlineCommand
 
 from config import *
+from Inits import *
 
 client = TelegramClient(SESSION, APP_ID, APP_HASH)
 client.start(bot_token=BOT_TOKEN)
 
-# - - - - - HANDLERS - - - - -
+# - - - - - EVENT HANDLERS - - - - -
 @client.on(events.NewMessage)
 async def message_handler(event) -> None:
     
@@ -17,36 +18,26 @@ async def message_handler(event) -> None:
     peer_id: int = event.chat_id
 
     if not(is_me):
-        text = text.split() 
-
-        if text[0][0] == '/':
-            await COMMANDS[text[0].strip('/')](event)
+        # Добавляем пользователя в таблицу для кеша, если его там нет
+        # И заодно кешируем это в памяти, чтоб не обращаться постоянно к дб
+        if peer_id not in CACHED:
+            Sql.setUpUser(peer_id)
+            CACHED.append(peer_id)
         
-        elif event.raw_text == '/start':
-            return
+        if text in COMMANDS:    
+            await COMMANDS[text](event)
+ 
+        else:
+            await handleNotCommand(event)
 
-@client.on(events.CallbackQuery)
-async def inlineHandler(event):
-    await event.edit('Thank you for clicking {}!'.format(event.data))
 
-# - - - - - HANDLERS - - - - -
+client.add_event_handler(handleInlineCommand, events.CallbackQuery)
 
-def initCommands() -> dict:
-    modules: list = os.listdir('commands')
-    commands: dict = dict()
+# - - - - - EVENT HANDLERS - - - - -
     
-    for module in modules:
-        if module == "__pycache__":
-            continue
-        
-        module = module.strip('.py')
-        module_func = getattr(importlib.import_module(f'commands.{module}'), module)
-        
-        commands[module.strip("command").lower()] = module_func
-    
-    return commands
-
 if __name__ == "__main__":
+    initConfig()
     COMMANDS = initCommands()
-    print(COMMANDS)
+    
+    Sql.setUp()
     client.run_until_disconnected()
